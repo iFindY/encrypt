@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.security.InvalidAlgorithmParameterException;
@@ -40,7 +41,6 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
 
-import org.apache.commons.io.IOUtils;
 
 class MyFrame extends JFrame {
 
@@ -73,21 +73,20 @@ class MyFrame extends JFrame {
         initEvent();
 
 
-        try {
-            File publicKeyFile  = new File(getClass().getClassLoader().getResource("public_key.der").toURI());
-            File privateKeyFile =new File(getClass().getClassLoader().getResource("private_key.der").toURI());
+        try(InputStream pub = getClass().getClassLoader().getResourceAsStream("public_key.der");
+                InputStream pri = getClass().getClassLoader().getResourceAsStream("private_key.der")) {
 
-            var publicKeyBytes  = Files.readAllBytes(publicKeyFile.toPath());
-            var privateKeyBytes = Files.readAllBytes(privateKeyFile.toPath());
+            var publicKeyBytes  = pub.readAllBytes();
+            var privateKeyBytes = pri.readAllBytes();
 
-            KeyFactory     keyFactory    = KeyFactory.getInstance("RSA");
+            KeyFactory          keyFactory     = KeyFactory.getInstance("RSA");
             EncodedKeySpec      publicKeySpec  = new X509EncodedKeySpec(publicKeyBytes);
             PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
 
             publicKey  = keyFactory.generatePublic(publicKeySpec);
             privateKey = keyFactory.generatePrivate(privateKeySpec);
 
-        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException | URISyntaxException e) {
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new RuntimeException(e);
         }
 
@@ -227,7 +226,7 @@ class MyFrame extends JFrame {
             try (CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
                     FileOutputStream fo = new FileOutputStream(path.getText().replace("encoded", "decoded"))) {
 
-                IOUtils.copy(cipherIn, fo);
+                cipherIn.transferTo(fo);
             }
 
         } catch (InvalidKeyException | NoSuchPaddingException | IOException | NoSuchAlgorithmException |
@@ -256,7 +255,7 @@ class MyFrame extends JFrame {
                 FileOutputStream fileOut = new FileOutputStream(pathEncrypt.getText() + ".encoded")) {
 
             fileOut.write(iv);
-            IOUtils.copy(cipherIn, fileOut);
+            cipherIn.transferTo(fileOut);
 
         } catch (RuntimeException | IOException e) {
             throw new RuntimeException(e);
@@ -273,7 +272,7 @@ class MyFrame extends JFrame {
             ZipEntry zipEntry = new ZipEntry("test.txt");
             zip.putNextEntry(zipEntry);
 
-            IOUtils.copy(fileIn, zip);
+            fileIn.transferTo(zip);
 
         } catch (IOException ignored) {
             System.err.println(ignored);

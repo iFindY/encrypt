@@ -4,6 +4,7 @@ plugins {
 
 group 'org.example'
 version '1.0-SNAPSHOT'
+configurations.implementation.setCanBeResolved(true)
 
 repositories {
     mavenCentral()
@@ -16,6 +17,16 @@ dependencies {
     implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
 
 }
+
+jar {
+    manifest {
+        attributes(
+                "Class-Path": configurations.implementation.collect { it.getName() }.join(' '),
+                "Main-Class" : 'org.example.Main'
+        )
+    }
+}
+
 
 test {
     useJUnitPlatform()
