@@ -8,25 +8,32 @@ import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.List;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
@@ -56,6 +63,9 @@ class MyFrame extends JFrame {
     private JLabel lblC = new JLabel("File Path zip:");
     private JLabel lblD = new JLabel("zip & encode:");
 
+    private PublicKey  publicKey;
+    private PrivateKey privateKey;
+
     public MyFrame() {
         setTitle("Decrypter");
         setSize(600, 300);
@@ -65,6 +75,26 @@ class MyFrame extends JFrame {
 
         initComponent();
         initEvent();
+
+
+        try {
+            File publicKeyFile  = new File(getClass().getClassLoader().getResource("public_key.der").toURI());
+            File privateKeyFile =new File(getClass().getClassLoader().getResource("private_key.der").toURI());
+
+            var publicKeyBytes  = Files.readAllBytes(publicKeyFile.toPath());
+            var privateKeyBytes = Files.readAllBytes(privateKeyFile.toPath());
+
+            KeyFactory     keyFactory    = KeyFactory.getInstance("RSA");
+            EncodedKeySpec      publicKeySpec  = new X509EncodedKeySpec(publicKeyBytes);
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+
+            publicKey  = keyFactory.generatePublic(publicKeySpec);
+            privateKey = keyFactory.generatePrivate(privateKeySpec);
+
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     private void initComponent() {
@@ -180,15 +210,23 @@ class MyFrame extends JFrame {
 
     private void decode(ActionEvent evt) {
 
-        SecretKey secretKey = new SecretKeySpec("Arkadi0123456789".getBytes(), "AES");
 
         try (FileInputStream fileIn = new FileInputStream(path.getText())) {
 
             byte[] fileIv = new byte[16];
+            byte[] aesKey = new byte[256];
             fileIn.read(fileIv);
+            fileIn.read(aesKey);
+
+            Cipher decryptCipher = Cipher.getInstance("RSA");
+            decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] aesKeyDecrypted = decryptCipher.doFinal(aesKey);
+
+            SecretKey aesSecretKey =  new SecretKeySpec(aesKeyDecrypted, "AES");
+
 
             var cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(fileIv));
+            cipher.init(Cipher.DECRYPT_MODE, aesSecretKey, new IvParameterSpec(fileIv));
 
             try (CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
                     FileOutputStream fo = new FileOutputStream(path.getText().replace("encoded", "decoded"))) {
@@ -197,7 +235,7 @@ class MyFrame extends JFrame {
             }
 
         } catch (InvalidKeyException | NoSuchPaddingException | IOException | NoSuchAlgorithmException |
-                 InvalidAlgorithmParameterException e) {
+                 InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
         }
 
@@ -242,7 +280,7 @@ class MyFrame extends JFrame {
             IOUtils.copy(fileIn, zip);
 
         } catch (IOException ignored) {
-            System.out.println(ignored);
+            System.err.println(ignored);
         }
     }
 
@@ -251,9 +289,6 @@ class MyFrame extends JFrame {
         Cipher    cipher;
         byte[]    iv;
 
-        // ======================================
-        // =              it cipher             =
-        // ======================================
         try {
             cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
@@ -263,24 +298,41 @@ class MyFrame extends JFrame {
         }
 
 
-        // ======================================
-        // =               zipping                =
-        // ======================================
         try (FileInputStream fileIn = new FileInputStream(pathZipAndEncode.getText());
                 FileOutputStream fileOut = new FileOutputStream(pathZipAndEncode.getText() + ".zip.encoded");
                 CipherOutputStream cipherOut = new CipherOutputStream(fileOut, cipher);
-                ZipOutputStream zipIn = new ZipOutputStream(cipherOut)) {
+                ZipOutputStream zipOut = new ZipOutputStream(cipherOut)) {
 
-            fileOut.write(iv);
+            fileOut.write(iv); // 16
+            fileOut.write(getAesRsaEncrypt()); // 16
             ZipEntry zipEntry = new ZipEntry("test.txt");
-            zipIn.putNextEntry(zipEntry);
+            zipOut.putNextEntry(zipEntry);
 
-            IOUtils.copy(fileIn, zipIn);
+            fileIn.transferTo(zipOut);
 
         } catch (IOException ignored) {
             System.out.println(ignored);
         }
 
+    }
+
+
+    private byte[] getAesRsaEncrypt(){
+        var aesKey  = "Arkadi0123456789".getBytes(StandardCharsets.UTF_8);
+
+        Cipher encryptCipher;
+        try {
+            encryptCipher = Cipher.getInstance("RSA");
+            encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+
+            var encrypted =  encryptCipher.doFinal(aesKey);
+
+            return encrypted;
+
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
