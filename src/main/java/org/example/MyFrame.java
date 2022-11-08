@@ -44,31 +44,27 @@ import org.apache.commons.io.IOUtils;
 
 class MyFrame extends JFrame {
 
-    private JTextField path        = new JTextField();
-    private JTextField pathEncrypt = new JTextField();
-
-    private JTextField pathZip = new JTextField();
+    private JTextField path             = new JTextField();
+    private JTextField pathEncrypt      = new JTextField();
+    private JTextField pathZip          = new JTextField();
     private JTextField pathZipAndEncode = new JTextField();
-    private JButton    exit        = new JButton("exit");
 
-    private JButton decode = new JButton("decode");
-    private JButton encode = new JButton("encode");
-
-    private JButton zip = new JButton("zip");
-    private JButton zipAndEncode = new JButton("zip&encode");
-    private JLabel  lblA   = new JLabel("File Path: decode");
-
-    private JLabel lblB = new JLabel("File Path encode:");
-
-    private JLabel lblC = new JLabel("File Path zip:");
-    private JLabel lblD = new JLabel("zip & encode:");
+    private JButton exit         = new JButton("exit");
+    private JButton decode       = new JButton("decode");
+    private JButton encode       = new JButton("encode");
+    private JButton zip          = new JButton("zip");
+    private JButton zipAndEncode = new JButton("zip & encode");
+    private JLabel  lblA         = new JLabel("File Path: decode");
+    private JLabel  lblB         = new JLabel("File Path encode:");
+    private JLabel  lblC         = new JLabel("File Path zip:");
+    private JLabel  lblD         = new JLabel("Zip & Encode:");
 
     private PublicKey  publicKey;
     private PrivateKey privateKey;
 
     public MyFrame() {
         setTitle("Decrypter");
-        setSize(600, 300);
+        setSize(600, 320);
         setLocation(new Point(5000, 300));
         setLayout(null);
         setResizable(false);
@@ -98,21 +94,21 @@ class MyFrame extends JFrame {
     }
 
     private void initComponent() {
-        exit.setBounds(500, 220, 80, 25);
-        decode.setBounds(400, 220, 80, 25);
-        encode.setBounds(300, 220, 80, 25);
-        zip.setBounds(200, 220, 80, 25);
-        zipAndEncode.setBounds(100, 220, 80, 25);
+        exit.setBounds(500, 250, 80, 25);
+        decode.setBounds(400, 250, 80, 25);
+        encode.setBounds(300, 250, 80, 25);
+        zip.setBounds(200, 250, 80, 25);
+        zipAndEncode.setBounds(80, 250, 110, 25);
 
         lblA.setBounds(20, 50, 150, 20);
         lblB.setBounds(20, 100, 150, 20);
         lblC.setBounds(20, 150, 150, 20);
-        lblD.setBounds(20, 180, 150, 20);
+        lblD.setBounds(20, 200, 150, 20);
 
         path.setBounds(140, 50, 400, 25);
         pathEncrypt.setBounds(140, 100, 400, 25);
         pathZip.setBounds(140, 150, 400, 25);
-        pathZipAndEncode.setBounds(140, 180, 400, 25);
+        pathZipAndEncode.setBounds(140, 200, 400, 25);
 
 
         add(exit);
