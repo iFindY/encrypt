@@ -13,8 +13,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -92,6 +90,7 @@ class MyFrame extends JFrame {
 
     }
 
+
     private void initComponent() {
         exit.setBounds(500, 250, 80, 25);
         decode.setBounds(400, 250, 80, 25);
@@ -128,8 +127,9 @@ class MyFrame extends JFrame {
     private void initEvent() {
 
         this.addWindowListener(new WindowAdapter() {
+            @Override
             public void windowClosing(WindowEvent e) {
-                System.exit(1);
+                System.exit(0);
             }
         });
 
