@@ -13,7 +13,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -34,6 +33,7 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
@@ -285,11 +285,12 @@ class MyFrame extends JFrame {
     }
 
     private void zipAndEncode(ActionEvent evt){
-        SecretKey secretKey = new SecretKeySpec("Arkadi0123456789".getBytes(), "AES");
+        SecretKey secretKey;
         Cipher    cipher;
         byte[]    iv;
 
         try {
+            secretKey = KeyGenerator.getInstance("AES").generateKey();
             cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             iv = cipher.getIV();
@@ -303,8 +304,8 @@ class MyFrame extends JFrame {
                 CipherOutputStream cipherOut = new CipherOutputStream(fileOut, cipher);
                 ZipOutputStream zipOut = new ZipOutputStream(cipherOut)) {
 
-            fileOut.write(iv); // 16
-            fileOut.write(getAesRsaEncrypt()); // 16
+            fileOut.write(iv);
+            fileOut.write(getAesRsaEncrypt(secretKey));
             ZipEntry zipEntry = new ZipEntry("test.txt");
             zipOut.putNextEntry(zipEntry);
 
@@ -317,18 +318,14 @@ class MyFrame extends JFrame {
     }
 
 
-    private byte[] getAesRsaEncrypt(){
-        var aesKey  = "Arkadi0123456789".getBytes(StandardCharsets.UTF_8);
-
+    private byte[] getAesRsaEncrypt(SecretKey secretKey){
         Cipher encryptCipher;
+
         try {
             encryptCipher = Cipher.getInstance("RSA");
             encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
-
-            var encrypted =  encryptCipher.doFinal(aesKey);
-
-            return encrypted;
+            return encryptCipher.doFinal(secretKey.getEncoded());
 
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException e) {
             throw new RuntimeException(e);
