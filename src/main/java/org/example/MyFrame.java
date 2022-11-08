@@ -41,17 +41,20 @@ class MyFrame extends JFrame {
     private JTextField pathEncrypt = new JTextField();
 
     private JTextField pathZip = new JTextField();
+    private JTextField pathZipAndEncode = new JTextField();
     private JButton    exit        = new JButton("exit");
 
     private JButton decode = new JButton("decode");
     private JButton encode = new JButton("encode");
 
     private JButton zip = new JButton("zip");
+    private JButton zipAndEncode = new JButton("zip&encode");
     private JLabel  lblA   = new JLabel("File Path: decode");
 
     private JLabel lblB = new JLabel("File Path encode:");
 
     private JLabel lblC = new JLabel("File Path zip:");
+    private JLabel lblD = new JLabel("zip & encode:");
 
     public MyFrame() {
         setTitle("Decrypter");
@@ -69,25 +72,32 @@ class MyFrame extends JFrame {
         decode.setBounds(400, 220, 80, 25);
         encode.setBounds(300, 220, 80, 25);
         zip.setBounds(200, 220, 80, 25);
+        zipAndEncode.setBounds(100, 220, 80, 25);
 
         lblA.setBounds(20, 50, 150, 20);
         lblB.setBounds(20, 100, 150, 20);
         lblC.setBounds(20, 150, 150, 20);
+        lblD.setBounds(20, 180, 150, 20);
 
         path.setBounds(140, 50, 400, 25);
         pathEncrypt.setBounds(140, 100, 400, 25);
         pathZip.setBounds(140, 150, 400, 25);
+        pathZipAndEncode.setBounds(140, 180, 400, 25);
+
 
         add(exit);
         add(encode);
         add(decode);
         add(zip);
+        add(zipAndEncode);
         add(lblA);
         add(lblB);
         add(lblC);
+        add(lblD);
         add(path);
         add(pathEncrypt);
         add(pathZip);
+        add(pathZipAndEncode);
     }
 
     private void initEvent() {
@@ -142,11 +152,25 @@ class MyFrame extends JFrame {
                 }
             }
         });
+        pathZipAndEncode.setDropTarget(new DropTarget() {
+
+            public synchronized void drop(DropTargetDropEvent evt) {
+                try {
+                    evt.acceptDrop(DnDConstants.ACTION_COPY);
+                    List<File> droppedFiles = (List<File>) evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+
+                    pathZipAndEncode.setText(droppedFiles.get(0).getAbsolutePath());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
 
         exit.addActionListener(this::exit);
         decode.addActionListener(this::decode);
         encode.addActionListener(this::encode);
         zip.addActionListener(this::zip);
+        zipAndEncode.addActionListener(this::zipAndEncode);
     }
 
     private void exit(ActionEvent evt) {
@@ -222,5 +246,41 @@ class MyFrame extends JFrame {
         }
     }
 
+    private void zipAndEncode(ActionEvent evt){
+        SecretKey secretKey = new SecretKeySpec("Arkadi0123456789".getBytes(), "AES");
+        Cipher    cipher;
+        byte[]    iv;
+
+        // ======================================
+        // =              it cipher             =
+        // ======================================
+        try {
+            cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            iv = cipher.getIV();
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
+
+
+        // ======================================
+        // =               zipping                =
+        // ======================================
+        try (FileInputStream fileIn = new FileInputStream(pathZipAndEncode.getText());
+                FileOutputStream fileOut = new FileOutputStream(pathZipAndEncode.getText() + ".zip.encoded");
+                CipherOutputStream cipherOut = new CipherOutputStream(fileOut, cipher);
+                ZipOutputStream zipIn = new ZipOutputStream(cipherOut)) {
+
+            fileOut.write(iv);
+            ZipEntry zipEntry = new ZipEntry("test.txt");
+            zipIn.putNextEntry(zipEntry);
+
+            IOUtils.copy(fileIn, zipIn);
+
+        } catch (IOException ignored) {
+            System.out.println(ignored);
+        }
+
+    }
 }
 
